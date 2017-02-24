@@ -1,4 +1,3 @@
 <resources>
-    <string name="app_name">ITEAFM</string>
-    <string name="title_item_detail">Item Detail</string>
+  <string name="app_name">FileManager</string>
 </resources>

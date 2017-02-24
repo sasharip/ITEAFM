@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:weightSum="25">
+    <android.support.v7.widget.Toolbar
+        android:id="@+id/mainToolbar"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="#1E90FF"
+        android:paddingLeft="16dp"
+        android:paddingRight="16dp">
+
+        <ImageButton
+            android:id="@+id/ibHome"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:background="@drawable/home" />
+
+        <TextView
+            android:id="@+id/tvTitle"
+            android:layout_width="200dp"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp"
+            android:paddingLeft="16dp"
+            android:text="Select a directory"
+            android:textColor="@color/colorWhite"
+            android:textSize="18sp" />
+
+        <ImageButton
+            android:id="@+id/ibNewFolder"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_gravity="right"
+            android:background="@drawable/new_folder" />
+        />
+
+    </android.support.v7.widget.Toolbar>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="30dp"
+        android:orientation="horizontal">
+
+        <ImageButton
+            android:id="@+id/ibRootDirectory"
+            android:layout_width="33dp"
+            android:layout_height="30dp"
+            android:background="@drawable/root_directory" />
+
+        <ImageView
+            android:layout_width="15dp"
+            android:layout_height="match_parent"
+            android:layout_gravity="center_vertical"
+            android:background="@drawable/arrow" />
+
+        <android.support.v7.widget.RecyclerView
+            android:id="@+id/horizontal_recycler_view2"
+            android:layout_width="match_parent"
+            android:layout_height="30dp"
+            android:background="#F0F8FF" />
+    </LinearLayout>
+
+    <ListView
+        android:id="@+id/listView2"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="25"/>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_gravity="bottom"
+        android:background="@color/colorGrey"></LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="55dp"
+        android:layout_margin="1dp"
+        android:orientation="horizontal"
+        android:layout_gravity="bottom">
+
+        <LinearLayout
+            android:id="@+id/llCancel"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:paddingLeft="35dp"
+            android:weightSum="2">
+
+            <ImageView
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:layout_gravity="center_vertical"
+                android:background="@drawable/cancel" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
+                android:text="Cancel" />
+
+        </LinearLayout>
+
+        <FrameLayout
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="@color/colorGrey"></FrameLayout>
+
+        <LinearLayout
+
+            android:id="@+id/llPasteHere"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:paddingLeft="30dp"
+            android:weightSum="2">
+
+            <ImageView
+                android:layout_width="40dp"
+                android:layout_height="30dp"
+                android:layout_gravity="center_vertical"
+                android:background="@drawable/paste_here" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
+                android:text="Paste here" />
+
+        </LinearLayout>
+
+
+    </LinearLayout>
+</LinearLayout>
