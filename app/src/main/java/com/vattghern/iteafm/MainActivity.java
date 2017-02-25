@@ -1,406 +1,553 @@
 package com.vattghern.iteafm;
 
+import static com.vattghern.iteafm.Constants.DIRECTORY_COPY_TO;
+import static com.vattghern.iteafm.Constants.INTENT_COPY;
+import static com.vattghern.iteafm.Constants.INTENT_MOVE;
+import static com.vattghern.iteafm.Constants.PATH;
+import static com.vattghern.iteafm.FileWriterReader.write;
+
 import android.Manifest;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.os.Build;
+import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
-import android.support.annotation.NonNull;
-import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.Toolbar;
-import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.regex.Pattern;
-
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
+import com.mikepenz.materialdrawer.Drawer;
+import com.mikepenz.materialdrawer.Drawer.OnDrawerItemClickListener;
+import com.mikepenz.materialdrawer.DrawerBuilder;
+import com.mikepenz.materialdrawer.model.PrimaryDrawerItem;
+import com.mikepenz.materialdrawer.model.interfaces.IDrawerItem;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.channels.FileChannel;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 
-
-/**
- * An activity representing a list of Items. This activity
- * has different presentations for handset and tablet-size devices. On
- * handsets, the activity presents a list of items, which when touched,
- * lead to a {@link ItemDetailActivity} representing
- * item details. On tablets, the activity presents the list of items and
- * item details side-by-side using two vertical panes.
- */
 public class MainActivity extends AppCompatActivity {
 
-    /**
-     * Whether or not the activity is in two-pane mode, i.e. running on a tablet
-     * device.
-     */
-    private boolean mTwoPane;
+  private DirectoryItemAdapter directoryItemAdapter;
+  private List items = new ArrayList<DirectoryItem>();
+  private String path = "/";
+  private Comparator comparator = new DirectoryItem.CompName();
+  private String[] sortVariants = {"Size", "Date", "Name"};
 
-    final Pattern DIR_SEPARATOR = Pattern.compile("/");
-    public ArrayList<String> filesList = new ArrayList<String>();
-    private static final String TAG = "myLogs";
-    private static final int COUNT = 25;
-    public static final List<elementItem> ITEMS = new ArrayList<elementItem>();
-    public static final Map<String, elementItem> ITEM_MAP = new HashMap<String, elementItem>();
+  private List<String> horizontalList;
+  private static HorizontalAdapter horizontalAdapter;
 
-    @BindView(R.id.toolbar)
-    Toolbar toolbar;
+  public class HorizontalAdapter extends RecyclerView.Adapter<HorizontalAdapter.MyViewHolder> {
 
-    @OnClick(R.id.fab)
-    public void fabClick(View view) {
-        Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                .setAction("Action", null).show();
+    private List<String> horizontalList;
+
+    public class MyViewHolder extends RecyclerView.ViewHolder {
+
+      public TextView txtView;
+      public ImageView ivRootDirectory;
+
+      public MyViewHolder(View view) {
+        super(view);
+        txtView = (TextView) view.findViewById(R.id.txtView);
+      }
+    }
+
+    public HorizontalAdapter(List<String> horizontalList) {
+      this.horizontalList = horizontalList;
+    }
+
+    private String getQiuckPath(int index) {
+      String quickPath = "/";
+      for (int i = 0; i <= index; i++) {
+        quickPath += horizontalList.get(i) + "/";
+      }
+      return quickPath;
+    }
+
+    public void updateHorizontalList(List<String> horizontalList) {
+      this.horizontalList.clear();
+      this.horizontalList.addAll(horizontalList);
+      notifyDataSetChanged();
     }
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_item_list);
-        ButterKnife.bind(this);
-        //permissions
-        ActivityCompat.requestPermissions(MainActivity.this,
-                new String[] { Manifest.permission.READ_EXTERNAL_STORAGE },
-                1);   //read
-        //reading
-        String path = getStorageDirectories().get(0);
-        if (path != null) {
-            Log.d(TAG, "path not null");
-        }
-        Log.d(TAG, path);
-//        File file = new File(path);
-//        File files[] = file.listFiles();
-//        Log.d(TAG, String.valueOf(files.toString().length()));
-//        for (int i = 0; i < files.length; i++) {
-//            filesList.add(files[i].getName());
-//            Log.d(TAG, filesList.toString());
-//        }
-//        //sorting array
-//        Object[] tt = filesList.toArray();
-//        filesList.clear();
-//        Arrays.sort(tt, alph);
-//        for (Object a : tt) {
-//            filesList.add((String) a);
-//        }
-        Log.w("mytag", path);
-        filesList = ListManager.pathToArray(path);
-        Log.w("mytag", path);
-        SortManager.sorting(1, path, filesList);
-
-        //toolbar
-        setSupportActionBar(toolbar);
-        toolbar.setTitle(getTitle());
-        //drawing
-        View recyclerView = findViewById(R.id.item_list);
-        assert recyclerView != null;
-        setupRecyclerView((RecyclerView) recyclerView);
-
-        if (findViewById(R.id.item_detail_container) != null) {
-            // The detail container view will be present only in the
-            // large-screen layouts (res/values-w900dp).
-            // If this view is present, then the
-            // activity should be in two-pane mode.
-            mTwoPane = true;
-        }
-
+    public HorizontalAdapter.MyViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+      View itemView = LayoutInflater.from(parent.getContext())
+          .inflate(R.layout.horizontal_item_view, parent, false);
+      return new HorizontalAdapter.MyViewHolder(itemView);
     }
-
-
 
     @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        finish();
+    public void onBindViewHolder(final HorizontalAdapter.MyViewHolder holder, final int position) {
+      holder.txtView.setText(horizontalList.get(position));
+      holder.txtView.setOnClickListener(new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+          if (position < horizontalList.size() - 1) {
+            path = getQiuckPath(position);
+            refreshList();
+          }
+        }
+      });
     }
 
-    public elementItem createElementItem(int position) {
-        String itemName = filesList.get(position);
-        Log.d(TAG, position + "cei");
-        return new elementItem(null, itemName);
+    @Override
+    public int getItemCount() {
+      return horizontalList.size();
     }
+  }
 
-//    private String makeDetails(int position, String itemName) {
-//        Log.d(TAG, "makeDetails");
-//        StringBuilder builder = new StringBuilder();
-////        builder.append("Details about Item: ").append(position);
-////        Log.d(TAG, "builder append 1");
-////        for (int i = 0; i < position; i++) {
-////            Log.d(TAG, "builder append 2");
-////
-////            builder.append("\nMore details information here.");
-////        }
-////        return builder.toString();
-//        File file = new File(itemName);
-//        Log.d(TAG, itemName);
-//        File files[] = file.listFiles();
-//        if (files == null) {
-//            Log.d(TAG, "path not null");
-//        }
-//
-//
-//
-//        for (int i = 0; i < files.length; i++) {
-//            filesList.add(files[i].getName());
-//            Log.d(TAG, filesList.toString());
-//        }
-//        //sorting array
-//        Object[] tt = filesList.toArray();
-//        filesList.clear();
-//        Arrays.sort(tt, alph);
-//        for (Object a : tt) {
-//            filesList.add((String) a);
-//            builder.append(filesList);
-//        }
-//
-//        return builder.toString();
-//    }
+  @BindView(R.id.tvTitle)
+  TextView tvTitle;
 
-
-    public boolean checkStoragePermission() {  //for storage
-
-        // Verify that all required contact permissions have been granted.
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                == PackageManager.PERMISSION_GRANTED) {
-            return true;
-        }
-        return false;
+  @Override
+  protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    setContentView(R.layout.activity_main);
+    ButterKnife.bind(this);
+    //permissions
+    ActivityCompat.requestPermissions(MainActivity.this,
+                                      new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 1);
+    if (getIntent().hasExtra(PATH)) {
+      path = getIntent().getStringExtra(PATH);
     }
-
-    public static String[] getExtSdCardPathsForActivity(Context context) {
-        List<String> paths = new ArrayList<String>();
-        for (File file : context.getExternalFilesDirs("external")) {
-            if (file != null) {
-                int index = file.getAbsolutePath().lastIndexOf("/Android/data");
-                if (index < 0) {
-                    Log.w("AmazeFileUtils", "Unexpected external file dir: " + file.getAbsolutePath());
-                } else {
-                    String path = file.getAbsolutePath().substring(0, index);
-                    try {
-                        path = new File(path).getCanonicalPath();
-                    } catch (IOException e) {
-                        // Keep non-canonical path.
-                    }
-                    paths.add(path);
-                }
+    setViews();
+    horizontalAdapter = new HorizontalAdapter(getCurrentPathButtonsList());
+    LinearLayoutManager horizontalLayoutManagaer =
+        new LinearLayoutManager(MainActivity.this, LinearLayoutManager.HORIZONTAL, false);
+    horizontal_recycler_view.setLayoutManager(horizontalLayoutManagaer);
+    horizontal_recycler_view.setAdapter(horizontalAdapter);
+    Drawer result = new DrawerBuilder().withActivity(this)
+        .withHasStableIds(true)
+        .addDrawerItems(new PrimaryDrawerItem().withName("Music")
+                            .withIcon(R.drawable.folder)
+                            .withIdentifier(1)
+                            .withSelectable(false), new PrimaryDrawerItem().withName("Photos")
+                            .withIcon(R.drawable.folder)
+                            .withIdentifier(2)
+                            .withSelectable(false), new PrimaryDrawerItem().withName("Videos")
+                            .withIcon(R.drawable.folder)
+                            .withIdentifier(3)
+                            .withSelectable(false), new PrimaryDrawerItem().withName("Documents")
+                            .withIcon(R.drawable.folder)
+                            .withIdentifier(4)
+                            .withSelectable(false))
+        .withOnDrawerItemClickListener(new OnDrawerItemClickListener() {
+          @Override
+          public boolean onItemClick(View view, int position, IDrawerItem drawerItem) {
+            if (drawerItem != null) {
+              Intent intent = null;
+              if (drawerItem.getIdentifier() == 1) {
+                intent = new Intent(MainActivity.this, MainActivity.class);
+              }
             }
-        }
-        if (paths.isEmpty()) paths.add("/storage/sdcard1");
-        return paths.toArray(new String[0]);
-    }
-
-    public List<String> getStorageDirectories() {
-        // Final set of paths
-        final ArrayList<String> rv = new ArrayList<>();
-        // Primary physical SD-CARD (not emulated)
-        final String rawExternalStorage = System.getenv("EXTERNAL_STORAGE");
-        // All Secondary SD-CARDs (all exclude primary) separated by ":"
-        final String rawSecondaryStoragesStr = System.getenv("SECONDARY_STORAGE");
-        // Primary emulated SD-CARD
-        final String rawEmulatedStorageTarget = System.getenv("EMULATED_STORAGE_TARGET");
-        if (TextUtils.isEmpty(rawEmulatedStorageTarget)) {
-            // Device has physical external storage; use plain paths.
-            if (TextUtils.isEmpty(rawExternalStorage)) {
-                // EXTERNAL_STORAGE undefined; falling back to default.
-                rv.add("/storage/sdcard0");
-            } else {
-                rv.add(rawExternalStorage);
-            }
-        } else {
-            // Device has emulated storage; external storage paths should have
-            // userId burned into them.
-            final String rawUserId;
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR1) {
-                rawUserId = "";
-            } else {
-                final String path = Environment.getExternalStorageDirectory().getAbsolutePath();
-                final String[] folders = DIR_SEPARATOR.split(path);
-                final String lastFolder = folders[folders.length - 1];
-                boolean isDigit = false;
-                try {
-                    Integer.valueOf(lastFolder);
-                    isDigit = true;
-                } catch (NumberFormatException ignored) {
-                }
-                rawUserId = isDigit ? lastFolder : "";
-            }
-            // /storage/emulated/0[1,2,...]
-            if (TextUtils.isEmpty(rawUserId)) {
-                rv.add(rawEmulatedStorageTarget);
-            } else {
-                rv.add(rawEmulatedStorageTarget + File.separator + rawUserId);
-            }
-        }
-        // Add all secondary storages
-        if (! TextUtils.isEmpty(rawSecondaryStoragesStr)) {
-            // All Secondary SD-CARDs splited into array
-            final String[] rawSecondaryStorages = rawSecondaryStoragesStr.split(File.pathSeparator);
-            Collections.addAll(rv, rawSecondaryStorages);
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkStoragePermission())
-            rv.clear();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            String strings[] = getExtSdCardPathsForActivity(this);
-            for (String s : strings) {
-                File f = new File(s);
-                if (! rv.contains(s) && canListFiles(f))
-                    rv.add(s);
-            }
-        }
-
-        return rv;
-    }
-
-    public static boolean canListFiles(File f) {
-        try {
-            if (f.canRead() && f.isDirectory())
-                return true;
-            else
-                return false;
-        } catch (Exception e) {
             return false;
-        }
+          }
+        })
+        .withSavedInstance(savedInstanceState)
+        .withShowDrawerOnFirstLaunch(true)
+        .build();
+    directoryItemAdapter = new DirectoryItemAdapter(this, R.layout.layout_list_item);
+
+    listView.setAdapter(directoryItemAdapter);
+    tvTitle.setText(path);
+  }
+
+  @Override
+  protected void onResume() {
+    refreshList();
+    super.onResume();
+  }
+
+  @Override
+  public void onBackPressed() {
+    if (directoryItemAdapter.isCheckBoxVisibility) {
+      directoryItemAdapter.isCheckBoxVisibility = false;
+    } else if (path.equals("/")) {
+      finish();
+    } else {
+      path = cutPath(path);
     }
+    llButtons.setVisibility(View.GONE);
+    refreshList();
+  }
 
-    private void setupRecyclerView(@NonNull RecyclerView recyclerView) {
-        Log.d(TAG, "SETUP");
-        for (int i = 0; i <= filesList.size() - 1; i++) {
-            Log.d(TAG, "additem");
-            ITEMS.add(createElementItem(i));
-            ITEM_MAP.put(createElementItem(i).id, createElementItem(i));
-            Log.d(TAG, "dummycontent");
+  private String cutPath(String path) {
+    do {
+      path = path.substring(0, path.length() - 1);
+    } while (path.charAt(path.length() - 1) != '/');
+    return path;
+  }
+
+  private void refreshList() {
+    items.clear();
+    File dir = new File(path);
+    String[] list = dir.list();
+    if (list != null) {
+      for (String file : list) {
+        if (!file.startsWith(".")) {
+          items.add(new DirectoryItem(path, file, false));
         }
-        Log.d(TAG, "createITEMS");
-        recyclerView.setAdapter(new SimpleItemRecyclerViewAdapter(ITEMS));
+      }
     }
-
-
-    /**
-     * A dummy item representing a piece of content.
-     */
-    public static class elementItem {
-        public final String id;
-        public final String content;
-
-
-        public elementItem(String id, String content) {
-            this.id = id;
-            this.content = content;
-
-        }
-
-        @Override
-        public String toString() {
-            return content;
-        }
-
+    horizontalList = getCurrentPathButtonsList();
+    if (horizontalList.size() > 1) {
+      horizontalList.remove(0);
     }
+    horizontalAdapter.updateHorizontalList(horizontalList);
+    Collections.sort(items, comparator);
+    directoryItemAdapter.updateList(items);
+  }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode,
-                                           String permissions[], int[] grantResults) {
-        switch (requestCode) {
-            case 1: {
-                // If request is cancelled, the result arrays are empty.
-                if (grantResults.length > 0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    // permission was granted, yay! Do the
-                    // contacts-related task you need to do.
-                } else {
-                    // permission denied, boo! Disable the
-                    // functionality that depends on this permission.
-                    Toast.makeText(MainActivity.this, "Permission denied to read your External storage", Toast.LENGTH_SHORT).show();
-                }
-                return;
+  private List<String> getCurrentPathButtonsList() {
+    List<String> buttons = new ArrayList<String>(Arrays.asList(path.split("/")));
+    return buttons;
+  }
+
+  private void makeNewFolder(String folder) {
+    File file = null;
+    boolean bool = false;
+    String filepath;
+    if (path.endsWith(File.separator)) {
+      filepath = path + folder;
+    } else {
+      filepath = path + File.separator + folder;
+    }
+    try {
+      file = new File(filepath);
+      bool = file.mkdir();
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    if (bool) {
+      refreshList();
+    }
+  }
+
+  private int getCountOfSelectedItems() {
+    int count = 0;
+    List<DirectoryItem> list = directoryItemAdapter.getList();
+    for (int i = 0; i < list.size(); i++) {
+      if (list.get(i).getSelected()) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  private void moveFile(File file, File dir) throws IOException {
+    if (file.isDirectory()) {
+      File outputFile = new File(dir, file.getName());
+      outputFile.mkdir();
+      for (File f : file.listFiles()) {
+        moveFile(f, outputFile);
+      }
+      delete(file.getPath());
+    } else {
+      File newFile = new File(dir, file.getName());
+      FileChannel outputChannel = null;
+      FileChannel inputChannel = null;
+      try {
+        outputChannel = new FileOutputStream(newFile).getChannel();
+        inputChannel = new FileInputStream(file).getChannel();
+        inputChannel.transferTo(0, inputChannel.size(), outputChannel);
+        inputChannel.close();
+        delete(file.getPath());
+      } finally {
+        if (inputChannel != null) {
+          inputChannel.close();
+        }
+        if (outputChannel != null) {
+          outputChannel.close();
+        }
+      }
+    }
+  }
+
+  private void delete(String fileToDelete) {
+    File F = new File(fileToDelete);
+    if (!F.exists()) {
+      return;
+    }
+    if (F.isDirectory()) {
+      for (File file : F.listFiles()) {
+        delete(file.getPath());
+      }
+      F.delete();
+    } else {
+      F.delete();
+    }
+  }
+
+  private void copyFile(File file, File dir) throws IOException {
+    if (file.isDirectory()) {
+      File outputFile = new File(dir, file.getName());
+      outputFile.mkdir();
+      for (File f : file.listFiles()) {
+        copyFile(f, outputFile);
+      }
+    } else {
+      File newFile = new File(dir, file.getName());
+      FileChannel outputChannel = null;
+      FileChannel inputChannel = null;
+      try {
+        outputChannel = new FileOutputStream(newFile).getChannel();
+        inputChannel = new FileInputStream(file).getChannel();
+        inputChannel.transferTo(0, inputChannel.size(), outputChannel);
+        inputChannel.close();
+      } finally {
+        if (inputChannel != null) {
+          inputChannel.close();
+        }
+        if (outputChannel != null) {
+          outputChannel.close();
+        }
+      }
+    }
+  }
+
+  @Override
+  protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+    llButtons.setVisibility(View.GONE);
+    if (resultCode == RESULT_CANCELED) {
+      finish();
+    }
+    if (resultCode == RESULT_OK) {
+      if (requestCode == INTENT_COPY) {
+        if (data.hasExtra(DIRECTORY_COPY_TO)) {
+          List<DirectoryItem> list = directoryItemAdapter.getList();
+          for (int i = 0; i < list.size(); i++) {
+            if (list.get(i).getSelected()) {
+              DirectoryItem di = (DirectoryItem) list.get(i);
+              try {
+                copyFile(new File(list.get(i).getFilepath()),
+                         new File(data.getStringExtra(DIRECTORY_COPY_TO)));
+              } catch (Throwable throwable) {
+
+              }
             }
-            // other 'case' lines to check for other
-            // permissions this app might request
+          }
         }
-    }
+      }
+      if (requestCode == INTENT_MOVE) {
+        if (data.hasExtra(DIRECTORY_COPY_TO)) {
+          List<DirectoryItem> list = directoryItemAdapter.getList();
+          for (int i = 0; i < list.size(); i++) {
+            if (list.get(i).getSelected()) {
+              DirectoryItem di = list.get(i);
+              try {
+                moveFile(new File(list.get(i).getFilepath()),
+                         new File(data.getStringExtra(DIRECTORY_COPY_TO)));
+              } catch (Throwable throwable) {
 
-    public class SimpleItemRecyclerViewAdapter
-            extends RecyclerView.Adapter<SimpleItemRecyclerViewAdapter.ViewHolder>  {
-
-        private final List<elementItem> mValues;
-
-        public SimpleItemRecyclerViewAdapter(List<elementItem> items) {
-            Log.d(TAG, "SimpleItemRecyclerViewAdapter");
-            mValues = items;
-        }
-
-        @Override
-        public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-            View view = LayoutInflater.from(parent.getContext())
-                    .inflate(R.layout.item_list_content, parent, false);
-            return new ViewHolder(view);
-        }
-
-        @Override
-        public void onBindViewHolder(final ViewHolder holder, int position) {
-            holder.mItem = mValues.get(position);
-            holder.mIdView.setText(mValues.get(position).id);
-            holder.mContentView.setText(mValues.get(position).content);
-
-            holder.mView.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    if (mTwoPane) {
-                        Bundle arguments = new Bundle();
-                        arguments.putString(ItemDetailFragment.ARG_ITEM_ID, holder.mItem.id);
-                        ItemDetailFragment fragment = new ItemDetailFragment();
-                        fragment.setArguments(arguments);
-                        getSupportFragmentManager().beginTransaction()
-                                .replace(R.id.item_detail_container, fragment)
-                                .commit();
-                    } else {
-                        Context context = v.getContext();
-                        Intent intent = new Intent(context, ItemDetailActivity.class);
-                        intent.putExtra(ItemDetailFragment.ARG_ITEM_ID, holder.mItem.id);
-
-                        context.startActivity(intent);
-                    }
-                }
-            });
-
-        }
-
-        @Override
-        public int getItemCount() {
-            return mValues.size();
-        }
-
-        public class ViewHolder extends RecyclerView.ViewHolder {
-            public final View mView;
-            public final TextView mIdView;
-            public final TextView mContentView;
-            public elementItem mItem;
-
-            public ViewHolder(View view) {
-                super(view);
-                mView = view;
-                mIdView = (TextView) view.findViewById(R.id.id);
-                mContentView = (TextView) view.findViewById(R.id.content);
+              }
             }
-
-            @Override
-            public String toString() {
-                return super.toString() + " '" + mContentView.getText() + "'";
-            }
+          }
         }
-
+      }
     }
+    super.onActivityResult(requestCode, resultCode, data);
+  }
+
+  private void shareMultiple(ArrayList<Uri> files, Context context) {
+    final Intent intent = new Intent(Intent.ACTION_SEND_MULTIPLE);
+    intent.setType("*/*");
+    intent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, files);
+    context.startActivity(Intent.createChooser(intent, "Share via"));
+  }
+
+  @BindView(R.id.horizontal_recycler_view)
+  RecyclerView horizontal_recycler_view;
+
+  @BindView(R.id.listView)
+  ListView listView;
+
+  @BindView(R.id.llButtons)
+  LinearLayout llButtons;
+
+  @OnClick(R.id.ibRootDirectory)
+  public void ibRootDirectoryClick(View v) {
+    path = "/";
+    refreshList();
+  }
+
+  @BindView(R.id.llShare)
+  LinearLayout llShare;
+
+  @OnClick(R.id.ibNewFolder)
+  public void ibNewFolderClick(View v) {
+    AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+    final EditText etNewFolderName = new EditText(MainActivity.this);  //!!!!!
+    builder.setTitle("Enter folder name")
+        .setView(etNewFolderName)
+        .setPositiveButton("Create", new DialogInterface.OnClickListener() {
+          @Override
+          public void onClick(DialogInterface dialog, int which) {
+            makeNewFolder(etNewFolderName.getText().toString());
+            refreshList();
+          }
+        })
+        .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+          public void onClick(DialogInterface dialog, int id) {
+            dialog.cancel();
+          }
+        });
+    AlertDialog alert = builder.create();
+    alert.show();
+  }
+
+  @BindView(R.id.llAddToFavorites)
+  LinearLayout llAddToFavorites;
+
+  @OnClick(R.id.ibSort)
+  public void ibSortClick(View v) {
+    AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+    builder.setTitle("Sort by").setIcon(R.drawable.sort).setItems(sortVariants, (dialog, which) -> {
+      if (which == 0) {
+        comparator = new DirectoryItem.CompSize();
+      }
+      if (which == 1) {
+        comparator = new DirectoryItem.CompDate();
+      }
+      if (which == 2) {
+        comparator = new DirectoryItem.CompName();
+      }
+      Toast.makeText(MainActivity.this, sortVariants[which], Toast.LENGTH_LONG).show();
+      Collections.sort(items, comparator);
+      directoryItemAdapter.updateList(items);
+    });
+
+    builder.create();
+    builder.show();
+  }
+
+  @OnClick(R.id.ibHome)
+  public void ibHomeClick(View v) {
+    setResult(RESULT_OK);
+    finish();
+  }
+
+  @BindView(R.id.llDelete)
+  LinearLayout llDelete;
+
+  @BindView(R.id.llCopy)
+  LinearLayout llCopy;
+
+  @BindView(R.id.llMove)
+  LinearLayout llMove;
+
+  private void setViews() {
+    llAddToFavorites.setOnClickListener(v -> {
+      List<DirectoryItem> list = directoryItemAdapter.getList();
+      ArrayList<String> filesToAdd = new ArrayList<String>();
+      for (int i = 0; i < list.size(); i++) {
+        if (list.get(i).getSelected()) {
+          write(list.get(i).getFilepath());
+        }
+      }
+      directoryItemAdapter.isCheckBoxVisibility = false;
+      llButtons.setVisibility(View.GONE);
+      refreshList();
+    });
+    llCopy.setOnClickListener(v -> {
+      if (getCountOfSelectedItems() > 0) {
+        directoryItemAdapter.isCheckBoxVisibility = false;
+        Intent intent = new Intent(MainActivity.this, CopyMoveActivity.class);
+        intent.putExtra(PATH, path);
+        startActivityForResult(intent, INTENT_COPY);
+      }
+    });
+    llMove.setOnClickListener(v -> {
+      if (getCountOfSelectedItems() > 0) {
+        directoryItemAdapter.isCheckBoxVisibility = false;
+        Intent intent = new Intent(MainActivity.this, CopyMoveActivity.class);
+        intent.putExtra(PATH, path);
+        startActivityForResult(intent, INTENT_MOVE);
+      }
+    });
+    llDelete.setOnClickListener(v -> {
+      AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+      builder.setTitle("Delete " + getCountOfSelectedItems() + " items?")
+          .setPositiveButton("YES", (dialog, which) -> {
+            List<DirectoryItem> list = directoryItemAdapter.getList();
+            for (int i = 0; i < list.size(); i++) {
+              if (list.get(i).getSelected()) {
+                DirectoryItem di = (DirectoryItem) list.get(i);
+                delete(list.get(i).getFilepath());
+              }
+            }
+            refreshList();
+          })
+          .setNegativeButton("Cancel", (dialog, id) -> dialog.cancel());
+      AlertDialog alert = builder.create();
+      alert.show();
+      directoryItemAdapter.isCheckBoxVisibility = false;
+      llButtons.setVisibility(View.GONE);
+    });
+    llShare.setOnClickListener((v) -> {
+      Toast.makeText(MainActivity.this, "share", Toast.LENGTH_LONG).show();
+      List<DirectoryItem> list = directoryItemAdapter.getList();
+      ArrayList<Uri> filesToShare = new ArrayList<Uri>();
+      for (int i = 0; i < list.size(); i++) {
+        if (list.get(i).getSelected()) {
+          filesToShare.add(Uri.fromFile(new File(list.get(i).getFilepath())));
+        }
+      }
+      shareMultiple(filesToShare, MainActivity.this);
+      directoryItemAdapter.isCheckBoxVisibility = false;
+      refreshList();
+      llButtons.setVisibility(View.GONE);
+    });
+    listView.setOnItemClickListener((parent, view, position, id) -> {
+      DirectoryItem file = (DirectoryItem) items.get(position);
+      String filename = file.getFilepath();
+      File intentFile = new File(filename);
+      if (intentFile.isDirectory()) {
+        path = filename;
+        Log.i("TAG", path);
+
+        refreshList();
+      }
+      if (intentFile.isFile()) {
+        Intent intent = new Intent();
+        intent.setAction(Intent.ACTION_VIEW);
+        intent.setDataAndType(Uri.fromFile(intentFile), file.getIntentType());
+        startActivity(intent);
+      }
+    });
+
+    listView.setOnItemLongClickListener((parent, view, position, id) -> {
+      llButtons.setVisibility(View.VISIBLE);
+      directoryItemAdapter.isCheckBoxVisibility = true;
+      DirectoryItem di = (DirectoryItem) items.get(position);
+      di.setSelected(true);
+      items.remove(position);
+      items.add(position, di);
+      directoryItemAdapter.updateList(items);
+      return false;
+    });
+  }
 }
+
+
+
